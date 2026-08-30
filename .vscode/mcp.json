@@ -1,0 +1,19 @@
+{
+  "servers": {
+    // Up-to-date, version-specific library docs — reduces invented APIs.
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": { "CONTEXT7_API_KEY": "${input:CONTEXT7_API_KEY}" }
+    },
+    // Internal OpenAPI/spec server so Copilot uses REAL endpoints & schemas.
+    "acme-api-specs": {
+      "command": "npx",
+      "args": ["-y", "@acme/mcp-openapi-server", "--specs", "./api-specs"],
+      "type": "stdio"
+    }
+  },
+  "inputs": [
+    { "id": "CONTEXT7_API_KEY", "type": "promptString", "password": true }
+  ]
+}
