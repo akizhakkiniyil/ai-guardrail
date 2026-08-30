@@ -2,6 +2,9 @@
 Notes: JetBrains plugin auto-install via customizations.jetbrains.plugins is unreliable in DevPod (issue #1153); post-create.sh 
 includes a fallback that installs plugins via the JetBrains remote-dev-server.sh installPlugins command. Generate devcontainer-lock.json
 (via the devcontainer CLI) and commit it to pin feature digests.
+
+.devcontainer/settings.xml should configure a mirror-of * pointing at the internal Nexus/Artifactory so that only vetted,
+cached artifacts resolve — hallucinated/slopsquatted packages simply 404 at build time.
 */
 
 # Pin base by digest. Update deliberately via the golden-image pipeline.
