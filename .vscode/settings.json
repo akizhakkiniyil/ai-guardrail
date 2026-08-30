@@ -1,0 +1,34 @@
+{
+  // ---- Over-automation hardening (agent mode) ----
+  // NEVER globally auto-approve: docs state this disables critical protections.
+  "chat.tools.global.autoApprove": false,
+  "chat.tools.autoApprove": false,
+  // Allow only safe, read-only / test commands; deny everything destructive.
+  "chat.tools.terminal.autoApprove": {
+    "/^git\\s+(status|diff|log|show|branch)\\b/": true,
+    "/^mvn\\s+(-q\\s+)?(test|verify|compile|spotless:check)\\b/": true,
+    "/^ls\\b/": true, "/^cat\\b/": true, "/^pwd\\b/": true,
+    "rm": false, "rmdir": false, "del": false, "mv": false,
+    "kill": false, "chmod": false, "chown": false, "curl": false, "wget": false,
+    "/^git\\s+(push|reset|revert|clean|checkout)\\b/": false,
+    "/^kubectl\\b/": false, "/^helm\\s+(install|upgrade|delete)\\b/": false,
+    "/^az\\b/": false, "/^docker\\b/": false
+  },
+  // Keep the human in the loop for MCP tools too.
+  "chat.mcp.autoStart": "never",
+
+  // ---- Copilot customization enablement ----
+  "chat.promptFiles": true,
+  "chat.modeFilesLocations": { ".github/chatmodes": true },
+  "chat.instructionsFilesLocations": { ".github/instructions": true },
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "chat.useAgentsMdFile": true,
+
+  // ---- Guardrails to reduce slop / enforce style ----
+  "editor.formatOnSave": true,
+  "java.format.settings.url": ".vscode/eclipse-java-google-style.xml",
+  "sonarlint.connectedMode.project": {
+    "connectionId": "acme-sonar",
+    "projectKey": "acme:payments-service"
+  }
+}
