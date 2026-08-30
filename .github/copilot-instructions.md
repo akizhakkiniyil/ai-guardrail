@@ -1,3 +1,8 @@
+/**
+Keep this file focused — GitHub's own guidance notes Copilot is non-deterministic and that when "instructions are too numerous"
+or "lack specificity," feedback quality degrades. Mirror the same content into an AGENTS.md at repo root
+if you also use other agents (Copilot reads both; they merge at the repository tier).
+*/
 # Copilot Instructions — ACME Payments Platform (Spring Boot / Maven / Helm / AKS)
 
 You are assisting on an enterprise Java 21 / Spring Boot microservices platform.
