@@ -1,0 +1,70 @@
+{
+  "name": "acme-springboot-golden",
+  // Pin the golden image by digest for identical toolchains across all devs.
+  "image": "registry.acme.internal/devcontainers/springboot-golden@sha256:REPLACE_WITH_DIGEST",
+  // Alternatively build from the Dockerfile below during image publishing.
+  // "build": { "dockerfile": "Dockerfile", "context": "." },
+
+  "features": {
+    "ghcr.io/devcontainers/features/java:1.6.3": {
+      "version": "21",
+      "jdkDistro": "tem",
+      "installMaven": "true",
+      "mavenVersion": "3.9.9",
+      "installGradle": "false"
+    },
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/azure-cli:1": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "kubectlVersion": "1.30",
+      "helmVersion": "3.15.4",
+      "minikube": "none"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "vscjava.vscode-java-pack",
+        "redhat.vscode-xml",
+        "SonarSource.sonarlint-vscode",
+        "redhat.vscode-yaml",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "timonwong.shellcheck"
+      ],
+      "settings": {
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "editor.formatOnSave": true
+      }
+    },
+    "jetbrains": {
+      "backend": "IntelliJ",
+      "plugins": [
+        "com.github.copilot",
+        "org.sonarlint.idea"
+      ]
+    }
+  },
+
+  "mounts": [
+    "source=${localEnv:HOME}/.m2,target=/home/vscode/.m2,type=bind,consistency=cached"
+  ],
+  "containerEnv": {
+    "MAVEN_OPTS": "-Dmaven.repo.local=/home/vscode/.m2/repository"
+  },
+  "remoteEnv": {
+    "SONAR_HOST_URL": "${localEnv:SONAR_HOST_URL}"
+  },
+
+  "initializeCommand": "echo 'DevPod: initializing acme golden workspace'",
+  "onCreateCommand": "bash .devcontainer/scripts/on-create.sh",
+  "updateContentCommand": "mvn -q -B -DskipTests dependency:go-offline || true",
+  "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
+  "postStartCommand": "bash .devcontainer/scripts/post-start.sh",
+  "remoteUser": "vscode"
+}
