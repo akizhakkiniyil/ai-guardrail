@@ -1,0 +1,88 @@
+stages: [build, quality, test, security, package, verify, deploy]
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository -Dhttps.protocols=TLSv1.2 -B"
+  AST_ENABLE_MR_PIPELINES: "true"
+
+# GitLab-managed scanners (Semgrep-based SAST, gitleaks-based secret detection,
+# dependency scanning, container scanning, Trivy).
+include:
+  - template: Jobs/SAST.gitlab-ci.yml
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
+  - template: Jobs/Dependency-Scanning.gitlab-ci.yml
+  - template: Jobs/Container-Scanning.gitlab-ci.yml
+
+default:
+  image: registry.acme.internal/devcontainers/springboot-golden:pinned
+  cache:
+    key: "$CI_COMMIT_REF_SLUG"
+    paths: [".m2/repository"]
+
+build:
+  stage: build
+  script: ["mvn -q clean compile"]
+
+style-and-arch:
+  stage: quality
+  script:
+    - mvn -q spotless:check
+    - mvn -q checkstyle:check
+    - mvn -q -Denforcer.fail=true enforcer:enforce
+    - mvn -q -Dtest='**/architecture/*ArchTest' test   # ArchUnit layering + resilience
+  artifacts:
+    when: always
+    reports: { junit: "target/surefire-reports/TEST-*.xml" }
+
+unit-tests-and-coverage:
+  stage: test
+  script:
+    - mvn -q verify                       # runs unit + IT, JaCoCo check
+  coverage: '/Total.*?([0-9]{1,3})%/'
+  artifacts:
+    reports:
+      junit: "target/surefire-reports/TEST-*.xml"
+      coverage_report:
+        coverage_format: cobertura
+        path: target/site/jacoco/jacoco.xml
+
+mutation-tests:
+  stage: test
+  script: ["mvn -q -Pmutation org.pitest:pitest-maven:mutationCoverage"]
+  artifacts: { paths: ["target/pit-reports"], when: always }
+  # mutationThreshold in pom fails the build below the bar.
+
+hallucinated-deps:
+  stage: security
+  script: ["bash ci/check-dependencies-exist.sh"]
+
+owasp-dependency-check:
+  stage: security
+  script: ["mvn -q org.owasp:dependency-check-maven:check"]
+  artifacts: { paths: ["target/dependency-check-report.html"], when: always }
+
+helm-lint:
+  stage: verify
+  script:
+    - helm lint helm/
+    - helm template helm/ | kubeconform -strict -summary
+
+perf-smoke:
+  stage: verify
+  script: ["k6 run --vus 10 --duration 30s perf/smoke.js"]
+  allow_failure: false   # gate; tune thresholds in the k6 script
+
+package-image:
+  stage: package
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+
+deploy-aks:
+  stage: deploy
+  script:
+    - az aks get-credentials -g $AKS_RG -n $AKS_CLUSTER
+    - helm upgrade --install payments helm/ --set image.tag=$CI_COMMIT_SHA --atomic --wait
+  environment: { name: production }
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
