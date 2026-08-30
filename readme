@@ -1,0 +1,31 @@
+Key Findings
+
+1. DevPod consumes the open devcontainer spec and supports both IDEs. DevPod is a client-only, open-source tool that builds workspaces from a devcontainer.json and connects VS Code (Remote-Containers) or the full JetBrains suite (via JetBrains Gateway). Providers include docker, kubernetes and cloud VMs, and it supports prebuilds. Critical gap: VS Code extensions listed in customizations.vscode.extensions install automatically, but JetBrains IDE plugins do not auto-install reliably in DevPod (tracked as loft-sh/devpod issue #1153) — plan a fallback bootstrap. 
+Medium
+GitHub
+
+2. Version pinning is the linchpin of "identical toolchains." Devcontainer Features (ghcr.io/devcontainers/features/*) follow semver and can be pinned to major/minor/patch; base images should be pinned by digest (FROM …@sha256:…); and the spec supports a devcontainer-lock.json lockfile recording the resolved digest + integrity hash of every feature ("trust on first use"). Use all three.
+
+3. Copilot's repo-committed artefacts are now a rich, standardized surface — and read from local disk. .github/copilot-instructions.md (repo-wide), .github/instructions/*.instructions.md (path-scoped via applyTo glob frontmatter), .github/prompts/*.prompt.md (invoked as /name, with mode/model/tools/description frontmatter), and .github/chatmodes/*.chatmode.md (custom modes/agents) are all consumed by the IDE extension from the workspace filesystem — so they work with a GitLab remote. AGENTS.md is also read (VS Code chat.useAgentsMdFile) and sits at the same "repository" tier as copilot-instructions.md.
+
+4. The over-automation pitfall has direct, shippable settings. VS Code exposes chat.tools.terminal.autoApprove (regex allow/deny lists), chat.tools.global.autoApprove (which the docs explicitly say "disables critical security protections" — keep it false), and chat.tools.autoApprove. These can be committed to a workspace .vscode/settings.json so agent mode always asks before running risky commands. (Note: these are marked Experimental in current VS Code docs.)
+
+5. Package hallucination is a measured supply-chain threat. Spracklen et al., "We Have a Package for You!" (USENIX Security 2025, Best Paper) generated code samples across 16 LLMs and found "440,445 (19.7%) were determined to be hallucinations, including 205,474 unique non-existent packages," at rates of "at least 5.2% for commercial models and 21.7% for open-source models" — and 38% of fake names closely resembled real packages. This is the basis of "slopsquatting." An allowlisted internal Nexus/Artifactory mirror + a dependency-existence check is the structural defense.
+
+6. Weak tests need mutation testing, not just coverage. JaCoCo line coverage only proves code ran; PITest mutation testing proves tests would catch a bug. pitest-maven supports mutationThreshold, coverageThreshold and testStrengthThreshold that fail the build below the bar.
+
+7. Architectural misfit is enforceable with ArchUnit + Semgrep. ArchUnit can assert layering (controllers→services→repositories), naming, and — key for resilience — that methods/classes carry required annotations (e.g., outbound-call methods must have @TimeLimiter/@Retry/@CircuitBreaker from Resilience4j). Semgrep custom rules can flag HTTP clients constructed without timeouts.
+
+8. The productivity assumption is empirically shaky — so measure. METR's July 2025 RCT (arXiv:2507.09089; 16 experienced OSS devs averaging 5 years on their repos, 246 tasks, Cursor Pro + Claude 3.5/3.7 Sonnet) found that despite developers forecasting a 24% speedup and estimating a 20% speedup afterward, "allowing AI actually increases completion time by 19%." GitClear's AI Copilot Code Quality (Feb 2025, 211M changed lines) found "moved" (refactored) lines fell from ~25% (2021) to 9.5% in 2024, copy/paste rose from 8.3% to 12.3% (exceeding moved code for the first time), and "During 2024, GitClear tracked an 8-fold increase in the frequency of code blocks with five or more lines that duplicate adjacent code." These justify "measure, don't assume" DORA + churn controls.
+
+Details: Architecture Overview
+
+Layered defense (each layer catches what the previous misses):
+
+Golden devcontainer image (pinned toolchain) → everyone gets identical Java/Maven/kubectl/helm/az versions. Consumed by DevPod for both IDEs.
+Repo-committed Copilot artefacts → steer generation toward your architecture, security, resilience and test expectations; force clarifying questions; harden agent auto-approval. Preventive.
+Local pre-commit gates (in the container) → fast feedback: format, secrets, quick SAST, dependency-existence. Detective, shifted left.
+GitLab CI gates → the real backstop that AI cannot bypass: build, Spotless/Checkstyle, ArchUnit, unit + mutation tests, JaCoCo, Semgrep, gitleaks, Dependency Scanning + hallucinated-dep check, Trivy container scan, Helm lint/kubeval, perf smoke, deploy to AKS. Detective/corrective, non-negotiable.
+MR governance → AI-usage disclosure trailers, MR template checklist, CODEOWNERS mandatory review. Corrective + accountability.
+
+Design principle: CI is the source of truth. Because Copilot artefacts and IDE settings can be ignored or overridden by an individual, and because JetBrains lags VS Code, no pitfall is considered "mitigated" unless there is a CI gate or a human review requirement behind it.
