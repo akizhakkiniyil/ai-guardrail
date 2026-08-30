@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "GitHub.copilot",
+    "GitHub.copilot-chat",
+    "vscjava.vscode-java-pack",
+    "SonarSource.sonarlint-vscode",
+    "redhat.vscode-xml",
+    "redhat.vscode-yaml",
+    "ms-kubernetes-tools.vscode-kubernetes-tools",
+    "timonwong.shellcheck"
+  ]
+}
