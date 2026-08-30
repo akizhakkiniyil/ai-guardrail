@@ -1,0 +1,40 @@
+package com.acme.payments.architecture;
+
+import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.junit.AnalyzeClasses;
+import com.tngtech.archunit.junit.ArchTest;
+import com.tngtech.archunit.lang.ArchRule;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
+
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
+import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
+
+@AnalyzeClasses(packages = "com.acme.payments",
+        importOptions = ImportOption.DoNotIncludeTests.class)
+class LayeredArchitectureTest {
+
+  @ArchTest
+  static final ArchRule layering = layeredArchitecture().consideringAllDependencies()
+      .layer("Controller").definedBy("..controller..")
+      .layer("Service").definedBy("..service..")
+      .layer("Repository").definedBy("..repository..")
+      .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
+      .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller")
+      .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service");
+
+  @ArchTest
+  static final ArchRule controllersDoNotTouchRepositories =
+      classes().that().resideInAPackage("..controller..")
+          .should().onlyDependOnClassesThat()
+          .resideOutsideOfPackage("..repository..");
+
+  // Architectural-misfit guard: outbound gateway calls must declare a timeout.
+  @ArchTest
+  static final ArchRule outboundCallsMustHaveTimeLimiter =
+      methods().that().areDeclaredInClassesThat()
+          .resideInAPackage("..client..")
+          .and().arePublic()
+          .should().beAnnotatedWith(TimeLimiter.class)
+          .because("every outbound call must have an explicit timeout (SLO/resilience)");
+}
