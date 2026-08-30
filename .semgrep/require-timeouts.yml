@@ -1,0 +1,9 @@
+rules:
+  - id: resttemplate-without-timeout
+    languages: [java]
+    severity: ERROR
+    message: >
+      RestTemplate/HttpClient created without explicit connect/read timeouts.
+      Configure timeouts (and prefer Resilience4j @TimeLimiter) — SLO requirement.
+    patterns:
+      - pattern: new RestTemplate()
